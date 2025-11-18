@@ -12,7 +12,7 @@ async function main() {
 
   console.log(`Deployed identity for ${identityOwner.address} at ${identity.address} !`);
 }
-
+.j
 main().catch((error) => {
   console.error(error);
   process.exitCode = 1;

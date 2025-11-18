@@ -8,24 +8,55 @@ task("add-claim", "Add a claim to an identity")
   .setAction(async (args: TaskArguments, hre) => {
     const signer = await hre.ethers.getSigner(args.from);
 
-    const identity = await hre.ethers.getContractAt('Identity', args.identity, signer);
+    // Load identity contract
+    const identity = await hre.ethers.getContractAt("Identity", args.identity, signer);
 
-    const claim = JSON.parse(args.claim);
+    // Load JSON from file
+    const fs = require("fs");
+    const claim = JSON.parse(fs.readFileSync(args.claim));
 
-    console.log(claim);
+    // Convert topic string → bytes32 hash
+    const topicHash = hre.ethers.utils.id(claim.topic);
 
-    const tx = await identity.addClaim(
-      claim.topic,
-      claim.scheme,
-      claim.issuer,
-      claim.signature,
-      claim.data,
-      claim.uri,
+    // Convert data string → bytes
+    const dataBytes = hre.ethers.utils.toUtf8Bytes(claim.data);
+    const dataHex = hre.ethers.utils.hexlify(dataBytes);
+
+    // Create digest required by ERC-735
+    const digest = hre.ethers.utils.keccak256(
+      hre.ethers.utils.defaultAbiCoder.encode(
+        ["address", "uint256", "bytes"],
+        [args.identity, topicHash, dataHex]
+      )
     );
 
-    console.log(`Add claim of topic ${claim.topic} on identity ${args.identity} tx: ${tx.hash}`);
+    // Sign digest with the issuer key
+    const signature = await signer.signMessage(hre.ethers.utils.arrayify(digest));
 
+    // Use issuer from signer unless overridden in JSON
+    const issuer = claim.issuer || args.from;
+
+    console.log("Prepared claim:");
+    console.log({
+      topicHash,
+      scheme: claim.scheme,
+      issuer,
+      signature,
+      dataHex,
+      uri: claim.uri
+    });
+
+    // Send tx
+    const tx = await identity.addClaim(
+      topicHash,
+      claim.scheme,
+      issuer,
+      signature,
+      dataHex,
+      claim.uri
+    );
+
+    console.log(`⏳ Adding claim... tx: ${tx.hash}`);
     await tx.wait();
-
-    console.log(`Add claim of topic ${claim.topic} on identity ${args.identity} tx mined: ${tx.hash}`);
+    console.log(`✅ Claim added. tx mined: ${tx.hash}`);
   });

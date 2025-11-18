@@ -2,6 +2,8 @@ import "@nomicfoundation/hardhat-toolbox";
 import { HardhatUserConfig } from "hardhat/config";
 import 'solidity-coverage';
 import "@nomiclabs/hardhat-solhint";
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 import "./tasks/add-claim.task";
 import "./tasks/add-key.task";
@@ -10,15 +12,18 @@ import "./tasks/deploy-proxy.task";
 import "./tasks/remove-claim.task";
 import "./tasks/remove-key.task";
 import "./tasks/revoke.task";
-
+import "./tasks/deploy-claim-issuer.task"
 const config: HardhatUserConfig = {
   solidity: "0.8.17",
   networks: {
-    mumbai: {
-      url: 'https://rpc-mumbai.maticvigil.com/v1/9cd3d6ce21f0a25bb8f33504a1820d616f700d24',
-      accounts: ["1d79b7c95d2456a55f55a0e17f856412637fa6b3c332fa557ce2c8a89139ec74"],
-    }
-  }
+    sepolia: {
+      url: process.env.SEPOLIA_URL || "",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+    },
+  },
+  etherscan: {
+    apiKey: process.env.ETHERSCAN_API_KEY,
+  },
 };
 
 export default config;
